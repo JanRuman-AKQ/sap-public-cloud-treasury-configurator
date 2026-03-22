@@ -339,27 +339,7 @@
     }
     .scope-licenses strong { color: var(--text); }
 
-    .signavio-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      color: var(--muted);
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 3px 10px;
-      cursor: pointer;
-      font-family: var(--font);
-      transition: all 0.2s;
-      margin-bottom: 10px;
-    }
-    .signavio-link:hover {
-      color: var(--primary);
-      border-color: var(--primary);
-    }
-
-    /* Fiori Apps */
+    /* Fiori Apps & Signavio */
     .fiori-toggle {
       font-size: 13px;
       color: var(--primary);
@@ -371,6 +351,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      text-decoration: none;
     }
     .fiori-toggle:hover { text-decoration: underline; }
     .fiori-apps-table {
@@ -737,8 +718,9 @@
                 </div>
 
                 <a
-                  class="signavio-link"
-                  :href="'https://me.sap.com/processnavigator/SolS/SOL_PUBLIC_CLOUD-1/ScopeItems/' + item.id"
+                  v-if="item.signavioUrl"
+                  class="fiori-toggle"
+                  :href="item.signavioUrl"
                   target="_blank"
                   @click.stop
                 >&#8599; Open - SAP Signavio Process Navigator</a>
@@ -880,10 +862,24 @@
       const response = await fetch('data/treasury-scope-items.xlsx?v=' + Date.now());
       if (!response.ok) throw new Error('Failed to load Excel file');
       const buf = await response.arrayBuffer();
-      const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+      const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellStyles: true });
 
       const sheet1 = wb.Sheets[wb.SheetNames[0]];
       const sheet2 = wb.Sheets[wb.SheetNames[1]];
+
+      // Extract hyperlinks from column A (Scope Item - Link)
+      const hyperlinks = {};
+      const range = XLSX.utils.decode_range(sheet1['!ref']);
+      for (let r = range.s.r + 1; r <= range.e.r; r++) {
+        const cell = sheet1[XLSX.utils.encode_cell({ r, c: 0 })];
+        if (cell && cell.l && cell.l.Target) {
+          // Find the scope item ID from column C (index 2) in the same row
+          const idCell = sheet1[XLSX.utils.encode_cell({ r, c: 2 })];
+          if (idCell) {
+            hyperlinks[idCell.v.toString().trim()] = cell.l.Target;
+          }
+        }
+      }
 
       const rawItems = XLSX.utils.sheet_to_json(sheet1);
       const rawApps = XLSX.utils.sheet_to_json(sheet2);
@@ -905,7 +901,8 @@
             : [],
           package: (row['Package AKQUINET'] || '').toString().trim(),
           mandays: row['Configuration estimate (MD)'] != null ? Number(row['Configuration estimate (MD)']) : null,
-          description: (row['Scope item description'] || '').toString().trim()
+          description: (row['Scope item description'] || '').toString().trim(),
+          signavioUrl: hyperlinks[(row['Scope Item - ID'] || '').toString().trim()] || null
         }));
 
       const apps = rawApps.map(row => ({
