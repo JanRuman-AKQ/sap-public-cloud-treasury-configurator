@@ -828,7 +828,7 @@
 
     function parseLevel(packageName) {
       const lower = packageName.toLowerCase();
-      if (lower.includes('integration')) return 'integration';
+      if (lower.includes('integration')) return 'optional';
       if (lower.includes('optional')) return 'optional';
       if (lower.includes('advanced')) return 'advanced';
       return 'basic';
@@ -946,11 +946,22 @@
               const groups = {};
               for (const item of areaItems) {
                 const pkg = item.package || 'Unassigned';
-                if (!groups[pkg]) groups[pkg] = [];
-                groups[pkg].push(item);
+                const level = parseLevel(pkg);
+                // Merge integration items into the optional group
+                const isIntegration = pkg.toLowerCase().includes('integration');
+                let groupKey;
+                if (isIntegration) {
+                  // Find the matching optional package name (without "integration scenario")
+                  const optionalKey = Object.keys(groups).find(k => parseLevel(k) === 'optional' && !k.toLowerCase().includes('integration'));
+                  groupKey = optionalKey || pkg.replace(/ -\s*integration scenario/i, '').trim();
+                } else {
+                  groupKey = pkg;
+                }
+                if (!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(item);
               }
 
-              const levelOrder = { basic: 0, advanced: 1, optional: 2, integration: 3 };
+              const levelOrder = { basic: 0, advanced: 1, optional: 2 };
               return Object.entries(groups)
                 .map(([name, items]) => ({
                   name,
@@ -1096,7 +1107,7 @@
 
               const allBasicSelected = basicPkgs.length > 0 && basicPkgs.every(i => this.selectedIds.has(i.id));
               const allAdvancedSelected = advancedPkgs.length > 0 && advancedPkgs.every(i => this.selectedIds.has(i.id));
-              const anyOptionalSelected = areaItems.some(i => (parseLevel(i.package) === 'optional' || parseLevel(i.package) === 'integration') && this.selectedIds.has(i.id));
+              const anyOptionalSelected = areaItems.some(i => parseLevel(i.package) === 'optional' && this.selectedIds.has(i.id));
 
               if (allBasicSelected && allAdvancedSelected && !anyOptionalSelected) return 'Advanced';
               if (allBasicSelected && !allAdvancedSelected && !anyOptionalSelected) return 'Basic';
