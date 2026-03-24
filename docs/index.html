@@ -209,6 +209,7 @@
     .level-basic { background: #E8F5E9; color: #2E7D32; }
     .level-advanced { background: #E3F2FD; color: #1565C0; }
     .level-optional { background: #FFF3E0; color: #E65100; }
+    .level-integration { background: #F3E5F5; color: #6A1B9A; }
     .package-mandays {
       font-size: 13px;
       color: var(--muted);
@@ -826,6 +827,7 @@
 
     function parseLevel(packageName) {
       const lower = packageName.toLowerCase();
+      if (lower.includes('integration')) return 'integration';
       if (lower.includes('optional')) return 'optional';
       if (lower.includes('advanced')) return 'advanced';
       return 'basic';
@@ -947,7 +949,7 @@
                 groups[pkg].push(item);
               }
 
-              const levelOrder = { basic: 0, advanced: 1, optional: 2 };
+              const levelOrder = { basic: 0, advanced: 1, optional: 2, integration: 3 };
               return Object.entries(groups)
                 .map(([name, items]) => ({
                   name,
@@ -1093,7 +1095,7 @@
 
               const allBasicSelected = basicPkgs.length > 0 && basicPkgs.every(i => this.selectedIds.has(i.id));
               const allAdvancedSelected = advancedPkgs.length > 0 && advancedPkgs.every(i => this.selectedIds.has(i.id));
-              const anyOptionalSelected = areaItems.some(i => parseLevel(i.package) === 'optional' && this.selectedIds.has(i.id));
+              const anyOptionalSelected = areaItems.some(i => (parseLevel(i.package) === 'optional' || parseLevel(i.package) === 'integration') && this.selectedIds.has(i.id));
 
               if (allBasicSelected && allAdvancedSelected && !anyOptionalSelected) return 'Advanced';
               if (allBasicSelected && !allAdvancedSelected && !anyOptionalSelected) return 'Basic';
